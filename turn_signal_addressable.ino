@@ -183,6 +183,9 @@ void brake() {
     }
     DEBUG_PRINTLN();
   }
+  else if (digitalRead(leftIn) && digitalRead(rightIn)) {
+    setAll(CRGB::Red);
+  }
   
   if (millis() - brakeMillis > brakeCylonWait) {
     for (int cycle = 0; cycle < brakeCylonCycles; cycle++) {
