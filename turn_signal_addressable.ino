@@ -2,29 +2,29 @@
 #include "turn_signal_addressable.h"
 
 // led info
-#define NUM_LEDS 10
+#define NUM_LEDS 40
 #define DATA_PIN 12
 
 // pin definitions
 #define brakeIn 5
-#define leftIn 6
-#define rightIn 4
+#define leftIn 2
+#define rightIn 3
 
 // LED array
 CRGB leds[NUM_LEDS];
-int leftLeds[] = {4,3,2,1,0};
-int rightLeds[] = {5,6,7,8,9,10};
+int leftLeds[NUM_LEDS / 2];
+int rightLeds[NUM_LEDS / 2];
 
 unsigned long previousMillis = 0;
 unsigned long brakeMillis = 0;
 
-const long turnInterval = 400;
-const long brakeFlashInterval = 40;
-const long brakeCylonInterval = 70;
+const long turnInterval = 30;
+const long brakeFlashInterval = 50;
+const long brakeCylonInterval = 20;
 const long brakeCylonWait = 4000;
 
 const int brakeFlashes = 8;
-const int brakeCylonCycles = 5;
+const int brakeCylonCycles = 4;
 
 int brakeState = LOW;
 int brakeCylonState = LOW;
@@ -36,7 +36,7 @@ void setup() {
   Serial.begin(9600);
   Serial.println("resetting");
   
-  LEDS.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
+  LEDS.addLeds<WS2812,DATA_PIN,GRB>(leds,NUM_LEDS);
   LEDS.setBrightness(50);
   
   // brake
@@ -44,12 +44,20 @@ void setup() {
   
   // left turn signal
   pinMode(leftIn, INPUT_PULLUP);
+  //attachInterrupt(digitalPinToInterrupt(leftIn), left, LOW);
   
   // right turn signal
   pinMode(rightIn, INPUT_PULLUP);
   
   // debugging LED
   pinMode(13, OUTPUT);
+
+  for (int i=0; i < NUM_LEDS / 2; i++) {
+    leftLeds[i] = NUM_LEDS / 2 + i;
+  }
+  for (int i=NUM_LEDS / 2 - 1; i >= 0; i--) {
+    rightLeds[i] = NUM_LEDS / 2 - 1 - i;
+  }
 }
 
 // the loop function runs over and over again forever
@@ -110,17 +118,22 @@ void signal(int side[], int *state) {
   for (int i = 0; i < NUM_LEDS / 2; i++) {
     Serial.print(side[i]);
     if (*state == HIGH) {
-      if (brakeState == LOW)
+      if (brakeState == LOW) {
+        if (!digitalRead(brakeIn)) {
+          break;
+        }
         leds[side[i]] = CRGB::Black;
-      else
+      }
+      else {
         leds[side[i]] = CRGB::Red;
+      }
     }
     else {
       leds[side[i]] = CRGB::Yellow;
     }
     
     FastLED.show();
-    delay(50);
+    delay(turnInterval);
   }
   Serial.println();
 }
@@ -129,12 +142,11 @@ void setAll(CRGB::HTMLColorCode color) {
   Serial.println("all");
   for (int i = 0; i < NUM_LEDS; i++) {
     if (brakeState == HIGH)
-      leds[i] = color;
+      leds[i] = CRGB::Red;
     else
       leds[i] = color;
-      
-    FastLED.show();
   }
+  FastLED.show();
 }
 
 void left() {
@@ -156,7 +168,7 @@ void brake() {
   setAll(CRGB::Red);
   if (millis() - brakeMillis > brakeCylonWait) {
     for (int cycle = 0; cycle < brakeCylonCycles; cycle++) {
-      if (digitalRead(brakeIn)) // break on no brake
+      if (digitalRead(brakeIn) || !digitalRead(leftIn) || !digitalRead(rightIn)) // break on no brake or signal
         break;
       cylon();
     }
@@ -166,11 +178,15 @@ void brake() {
   Serial.println("end brake");
 }
 
-void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i].nscale8(150); } }
+void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i].nscale8(200); } }
 
 void cylon() {
   for (int i = 0; i < NUM_LEDS; i++) {
     Serial.println("cylon >");
+    if (digitalRead(brakeIn) || !digitalRead(leftIn) || !digitalRead(rightIn)) { // break on no brake or signal
+      setAll(CRGB::Red);
+      break;
+    }
     leds[i] = CHSV(0, 255, 255);
     FastLED.show();
     fadeall();
@@ -179,37 +195,13 @@ void cylon() {
   
   for (int i = NUM_LEDS - 1; i >= 0; i--) {
     Serial.println("cylon <");
+    if (digitalRead(brakeIn) || !digitalRead(leftIn) || !digitalRead(rightIn)) { // break on no brake or signal
+      setAll(CRGB::Red);
+      break;
+    }
     leds[i] = CHSV(0, 255, 255);
     FastLED.show();
     fadeall();
     delay(brakeCylonInterval);
   }
 }
-  
-//  brakeCylonState = !brakeCylonState;
-//  // out
-//  for (int i = first; i < last; i++) {
-//    if (digitalRead(brakeIn)) // break on no brake
-//      break;
-//    leds[leftLeds[i]] = CRGB::Black;
-//    leds[rightLeds[i]] = CRGB::Black;
-//    FastLED.show();
-//    delay(brakeCylonInterval);
-//  }
-//  
-//  //  in
-//  for (int i = last; i >= first; i--) {
-//    if (digitalRead(brakeIn)) // break on no brake
-//      break;
-//    if (brakeCylonState == HIGH) {
-//      leds[leftLeds[i]] = CRGB::Black;
-//      leds[rightLeds[i]] = CRGB::Black;
-//    }
-//    else {
-//      leds[leftLeds[i]] = CRGB::Red;
-//      leds[rightLeds[i]] = CRGB::Red;
-//    }
-//    FastLED.show();
-//    delay(brakeCylonInterval);
-//  }
-//}
