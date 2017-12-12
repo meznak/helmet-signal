@@ -26,6 +26,9 @@ const long brakeCylonWait = 4000;
 const int brakeFlashes = 8;
 const int brakeCylonCycles = 4;
 
+const int yellowBrightness = 60;
+const int redBrightness = 100;
+
 int brakeState = LOW;
 int brakeCylonState = LOW;
 int leftState = LOW;
@@ -37,14 +40,13 @@ void setup() {
   Serial.println("resetting");
   
   LEDS.addLeds<WS2812,DATA_PIN,GRB>(leds,NUM_LEDS);
-  LEDS.setBrightness(50);
+  LEDS.setBrightness(yellowBrightness);
   
   // brake
   pinMode(brakeIn, INPUT_PULLUP);
   
   // left turn signal
   pinMode(leftIn, INPUT_PULLUP);
-  //attachInterrupt(digitalPinToInterrupt(leftIn), left, LOW);
   
   // right turn signal
   pinMode(rightIn, INPUT_PULLUP);
@@ -66,26 +68,13 @@ void loop() {
   
   // inputs are active-low!!!
   if (!digitalRead(brakeIn)) {
-    if (brakeState == LOW) {
-      // brake was just applied. flash like a mofo!
-      Serial.print("brake ");
-      brakeState = HIGH;
-      brakeMillis = millis();
-      
-      for (int cycle = 0; cycle < brakeFlashes; cycle++) {
-        Serial.print(cycle);
-
-        setAll(CRGB::Black);
-        delay(brakeFlashInterval);
-        setAll(CRGB::Red);
-        delay(brakeFlashInterval);
-      }
-      Serial.println();
-    }
+    LEDS.setBrightness(redBrightness);
+    brake();
   }
   else {
     if (brakeState == HIGH) {
       brakeState = LOW;
+      LEDS.setBrightness(yellowBrightness);
       setAll(CRGB::Yellow);
     }
   }
@@ -120,7 +109,7 @@ void signal(int side[], int *state) {
     if (*state == HIGH) {
       if (brakeState == LOW) {
         if (!digitalRead(brakeIn)) {
-          break;
+          return;
         }
         leds[side[i]] = CRGB::Black;
       }
@@ -141,10 +130,7 @@ void signal(int side[], int *state) {
 void setAll(CRGB::HTMLColorCode color) {
   Serial.println("all");
   for (int i = 0; i < NUM_LEDS; i++) {
-    if (brakeState == HIGH)
-      leds[i] = CRGB::Red;
-    else
-      leds[i] = color;
+    leds[i] = color;
   }
   FastLED.show();
 }
@@ -165,7 +151,25 @@ void right() {
 
 void brake() {
   Serial.println("brake");
-  setAll(CRGB::Red);
+  
+  if (brakeState == LOW) {
+    // brake was just applied. flash like a mofo!
+    Serial.print("bflash ");
+    brakeState = HIGH;
+    brakeMillis = millis();
+    
+    for (int cycle = 0; cycle < brakeFlashes; cycle++) {
+      Serial.print(cycle);
+
+      setAll(CRGB::Red);
+      delay(brakeFlashInterval);
+      setAll(CRGB::Black);
+      delay(brakeFlashInterval);
+      setAll(CRGB::Red);
+    }
+    Serial.println();
+  }
+  
   if (millis() - brakeMillis > brakeCylonWait) {
     for (int cycle = 0; cycle < brakeCylonCycles; cycle++) {
       if (digitalRead(brakeIn) || !digitalRead(leftIn) || !digitalRead(rightIn)) // break on no brake or signal
@@ -173,6 +177,7 @@ void brake() {
       cylon();
     }
     
+    setAll(CRGB::Red);
     brakeMillis = millis();
   }
   Serial.println("end brake");
