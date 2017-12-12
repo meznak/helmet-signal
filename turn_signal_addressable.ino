@@ -16,9 +16,9 @@
 #define DATA_PIN 12
 
 // pin definitions
-#define brakeIn 5
-#define leftIn 2
-#define rightIn 3
+const int brakeIn = 5;
+const int leftIn = 2;
+const int rightIn = 3;
 
 // LED array
 CRGB leds[NUM_LEDS];
@@ -112,10 +112,14 @@ void loop() {
   }
 }
 
-void signal(int side[], int *state) {
+void signal(int side[], int *state, const int *pin) {
   DEBUG_PRINT("blink ");
   for (int i = 0; i < NUM_LEDS / 2; i++) {
     DEBUG_PRINT(side[i]);
+
+    if (digitalRead(*pin))
+      break;
+
     if (*state == HIGH) {
       if (brakeState == LOW) {
         if (!digitalRead(brakeIn)) {
@@ -149,14 +153,14 @@ void left() {
   DEBUG_PRINTLN("left");
   leftState = !leftState;
     
-  signal(leftLeds, &leftState);
+  signal(leftLeds, &leftState, &leftIn);
 }
 
 void right() {
   DEBUG_PRINTLN("right");
   rightState = !rightState;
   
-  signal(rightLeds, &rightState);
+  signal(rightLeds, &rightState, &rightIn);
 }
 
 void brake() {
