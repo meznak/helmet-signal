@@ -1,6 +1,16 @@
 #include "FastLED.h"
 #include "turn_signal_addressable.h"
 
+// control debug serial prints
+//#define DEBUG // comment this to stop debug output
+#ifdef DEBUG
+ #define DEBUG_PRINT(x)    Serial.print (x)
+ #define DEBUG_PRINTLN(x)  Serial.println (x)
+#else
+ #define DEBUG_PRINT(x)
+ #define DEBUG_PRINTLN(x)
+#endif
+
 // led info
 #define NUM_LEDS 40
 #define DATA_PIN 12
@@ -37,7 +47,7 @@ int rightState = LOW;
 // the setup function runs once when you press reset or power the board
 void setup() {
   Serial.begin(9600);
-  Serial.println("resetting");
+  DEBUG_PRINTLN("resetting");
   
   LEDS.addLeds<WS2812,DATA_PIN,GRB>(leds,NUM_LEDS);
   LEDS.setBrightness(yellowBrightness);
@@ -103,9 +113,9 @@ void loop() {
 }
 
 void signal(int side[], int *state) {
-  Serial.print("blink ");
+  DEBUG_PRINT("blink ");
   for (int i = 0; i < NUM_LEDS / 2; i++) {
-    Serial.print(side[i]);
+    DEBUG_PRINT(side[i]);
     if (*state == HIGH) {
       if (brakeState == LOW) {
         if (!digitalRead(brakeIn)) {
@@ -124,11 +134,11 @@ void signal(int side[], int *state) {
     FastLED.show();
     delay(turnInterval);
   }
-  Serial.println();
+  DEBUG_PRINTLN();
 }
 
 void setAll(CRGB::HTMLColorCode color) {
-  Serial.println("all");
+  DEBUG_PRINTLN("all");
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = color;
   }
@@ -136,30 +146,30 @@ void setAll(CRGB::HTMLColorCode color) {
 }
 
 void left() {
-  Serial.println("left");
+  DEBUG_PRINTLN("left");
   leftState = !leftState;
     
   signal(leftLeds, &leftState);
 }
 
 void right() {
-  Serial.println("right");
+  DEBUG_PRINTLN("right");
   rightState = !rightState;
   
   signal(rightLeds, &rightState);
 }
 
 void brake() {
-  Serial.println("brake");
+  DEBUG_PRINTLN("brake");
   
   if (brakeState == LOW) {
     // brake was just applied. flash like a mofo!
-    Serial.print("bflash ");
+    DEBUG_PRINT("bflash ");
     brakeState = HIGH;
     brakeMillis = millis();
     
     for (int cycle = 0; cycle < brakeFlashes; cycle++) {
-      Serial.print(cycle);
+      DEBUG_PRINT(cycle);
 
       setAll(CRGB::Red);
       delay(brakeFlashInterval);
@@ -167,7 +177,7 @@ void brake() {
       delay(brakeFlashInterval);
       setAll(CRGB::Red);
     }
-    Serial.println();
+    DEBUG_PRINTLN();
   }
   
   if (millis() - brakeMillis > brakeCylonWait) {
@@ -180,14 +190,14 @@ void brake() {
     setAll(CRGB::Red);
     brakeMillis = millis();
   }
-  Serial.println("end brake");
+  DEBUG_PRINTLN("end brake");
 }
 
 void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i].nscale8(200); } }
 
 void cylon() {
   for (int i = 0; i < NUM_LEDS; i++) {
-    Serial.println("cylon >");
+    DEBUG_PRINTLN("cylon >");
     if (digitalRead(brakeIn) || !digitalRead(leftIn) || !digitalRead(rightIn)) { // break on no brake or signal
       setAll(CRGB::Red);
       break;
@@ -199,7 +209,7 @@ void cylon() {
   }
   
   for (int i = NUM_LEDS - 1; i >= 0; i--) {
-    Serial.println("cylon <");
+    DEBUG_PRINTLN("cylon <");
     if (digitalRead(brakeIn) || !digitalRead(leftIn) || !digitalRead(rightIn)) { // break on no brake or signal
       setAll(CRGB::Red);
       break;
