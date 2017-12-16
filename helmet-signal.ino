@@ -1,5 +1,5 @@
-#include "FastLED.h"
-#include "turn_signal_addressable.h"
+#include <FastLED.h>
+#include "helmet-signal.h"
 
 // control debug serial prints
 //#define DEBUG // comment this to stop debug output
