@@ -1,4 +1,3 @@
-#include <FastLED.h>
 #include "helmet-signal.h"
 
 // control debug serial prints
@@ -14,11 +13,6 @@
 // led info
 #define NUM_LEDS 40
 #define DATA_PIN 12
-
-// pin definitions
-const int brakeIn = 5;
-const int leftIn = 2;
-const int rightIn = 3;
 
 // LED array
 CRGB leds[NUM_LEDS];
@@ -52,15 +46,6 @@ void setup() {
   LEDS.addLeds<WS2812,DATA_PIN,GRB>(leds,NUM_LEDS);
   LEDS.setBrightness(yellowBrightness);
   
-  // brake
-  pinMode(brakeIn, INPUT_PULLUP);
-  
-  // left turn signal
-  pinMode(leftIn, INPUT_PULLUP);
-  
-  // right turn signal
-  pinMode(rightIn, INPUT_PULLUP);
-  
   // debugging LED
   pinMode(13, OUTPUT);
 
@@ -72,7 +57,6 @@ void setup() {
   }
 }
 
-// the loop function runs over and over again forever
 void loop() {
   unsigned long currentMillis = millis();
   
