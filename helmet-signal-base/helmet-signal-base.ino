@@ -8,11 +8,24 @@ const int brakeIn = 5;
 const int leftIn = 2;
 const int rightIn = 3;
 
-// byte to send input state via radio
-byte state = 0; // [ - - - - - left right brake ]
-
 // radio configuration
 RF24 radio(7,8);
+RF24Network network(radio);
+
+const uint16_t base_node = 00; // octal address
+const uint16_t helmet_node = 01;
+
+const unsigned long interval = 20;
+
+unsigned long last_sent = 0;
+unsigned long packets_sent = 0;
+
+struct payload_t {
+  unsigned long ms;
+  unsigned long counter;
+  int netid;
+  byte state; // [ - - - - - left right brake ]
+};
 
 void setup() {
   Serial.begin(9600);
@@ -26,31 +39,15 @@ void setup() {
   
   // right turn signal
   pinMode(rightIn, INPUT_PULLUP);
-  
-  // debugging LED
-  pinMode(13, OUTPUT);
 
+  SPI.begin();
   radio.begin();
-  
-  // Set the PA Level low to prevent power supply related issues since this is a
-  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  // Comment out for production.
-  DEBUG_PRINTLN("Setting PA Level");
-  radio.setPALevel(RF24_PA_LOW);
-
-  uint8_t addresses[][6] = {"1Node", "2Node"};
-  DEBUG_PRINTLN("open write pipe");
-  radio.openWritingPipe(addresses[0]);
-  DEBUG_PRINTLN("write pipe open");
-  DEBUG_PRINTLN("open read pipe");
-  radio.openReadingPipe(1,addresses[1]);
-  DEBUG_PRINTLN("read pipe open");
-  radio.setAutoAck(0,false); // disable ACK
-  radio.stopListening();
+  radio.setPALevel(RF24_PA_HIGH);
+  network.begin(/*channel*/ 90, /*node address*/ base_node);
 }
 
 void loop() {
-  state = 0;
+  byte state = 0;
   if (!digitalRead(brakeIn)) {
     state |= 1;
   }
@@ -60,14 +57,24 @@ void loop() {
   if (!digitalRead(leftIn)) {
     state |= 4;
   }
+  network.update();
 
-  DEBUG_PRINT("Sending ");
-  DEBUG_PRINTLN(state);
+  unsigned long now = millis();
+  if (now - last_sent >= interval) {
+    last_sent = now;
 
-  if (!radio.write(&state, sizeof(byte))) {
-    DEBUG_PRINTLN("failed");
-  }
-  else {
-    DEBUG_PRINTLN("sent");
+    DEBUG_PRINT("Sending...");
+
+    DEBUG_PRINTLN(state);
+
+    payload_t payload = { millis(), packets_sent++, NETID, state };
+
+    RF24NetworkHeader header(/*to node*/ helmet_node);
+    bool ok = network.write(header, &payload, sizeof(payload));
+
+    if (ok)
+      DEBUG_PRINTLN("ok");
+    else
+      DEBUG_PRINTLN("failed");
   }
 }

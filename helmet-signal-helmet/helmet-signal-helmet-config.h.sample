@@ -1,0 +1,3 @@
+// Change this (integer) value and save this file as helmet-signal-base-config.h
+// The helmet config must match this value.
+#define NETID 12345
